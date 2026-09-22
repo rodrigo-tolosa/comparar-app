@@ -119,7 +119,7 @@ export default function Home() {
         )}
       </div>
       <footer className="mx-auto max-w-[1120px] px-6 pb-10 text-[12.5px] text-ink-soft md:px-10">
-        compar.ar · versión niña, uso interno. El motor de cálculo corre en tu navegador.
+        compar.ar · versión inicial, uso interno. El motor de cálculo corre en tu navegador.
       </footer>
       {wordCtx && <WordModal open={wordOpen} onClose={() => setWordOpen(false)} ctx={wordCtx} />}
     </main>
