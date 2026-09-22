@@ -15,7 +15,9 @@ export function WordModal({ open, onClose, ctx }: { open: boolean; onClose: () =
   const [note, setNote] = useState<{ ok: boolean; txt: string } | null>(null);
   if (!open) return null;
 
+  const noName = !ctx.testedName.trim();
   const run = async (kind: string) => {
+    if (noName) return;
     setBusy(kind); setNote(null);
     try {
       await generateWord(kind, ctx);
@@ -37,16 +39,21 @@ export function WordModal({ open, onClose, ctx }: { open: boolean; onClose: () =
           </div>
           <button onClick={onClose} className="text-[18px] text-ink-soft hover:text-ink">✕</button>
         </div>
+        {noName && (
+          <p className="mt-3 rounded-lg border-l-2 border-warn bg-warn-tint px-3 py-2.5 text-[13px] text-warn">
+            Cargá el <b>nombre de la parte analizada</b> (en la barra de export) para poder descargar. Se agrega al nombre de cada archivo.
+          </p>
+        )}
         <div className="mt-4 grid grid-cols-1 gap-2">
           {ITEMS.map(([k, label]) => (
-            <button key={k} disabled={!!busy} onClick={() => run(k)}
-              className="flex items-center justify-between rounded-lg border border-line-strong px-4 py-2.5 text-left text-[14px] transition hover:border-accent disabled:opacity-50">
+            <button key={k} disabled={!!busy || noName} onClick={() => run(k)}
+              className="flex items-center justify-between rounded-lg border border-line-strong px-4 py-2.5 text-left text-[14px] transition hover:border-accent disabled:opacity-40 disabled:hover:border-line-strong">
               <span>{label}</span>
               {busy === k && <span className="text-[12px] text-ink-soft">generando…</span>}
             </button>
           ))}
-          <button disabled={!!busy} onClick={() => run("all")}
-            className="mt-1 rounded-lg bg-ink px-4 py-2.5 text-[14px] font-medium text-paper transition hover:opacity-90 disabled:opacity-50">
+          <button disabled={!!busy || noName} onClick={() => run("all")}
+            className="mt-1 rounded-lg bg-ink px-4 py-2.5 text-[14px] font-medium text-paper transition hover:opacity-90 disabled:opacity-40">
             Descargar los cinco
           </button>
         </div>

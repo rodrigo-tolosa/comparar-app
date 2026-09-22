@@ -98,6 +98,15 @@ export default function Home() {
                 {Object.keys(ds.plis).map((p) => <option key={p}>{p}</option>)}
               </select>
             </label>
+            <div className="flex items-center gap-1.5 text-[13px] text-ink-soft">
+              Años
+              <div className="flex overflow-hidden rounded-lg border border-line-strong">
+                {Array.from({ length: Math.min(5, ds.plis[pli].length) }, (_, i) => i + 1).map((k) => (
+                  <button key={k} onClick={() => setNy(k)}
+                    className={`px-2.5 py-1.5 tnum ${ny === k ? "bg-ink text-paper" : "bg-panel text-ink-soft hover:text-ink"}`}>{k}</button>
+                ))}
+              </div>
+            </div>
             <span className="rounded-full border border-line px-3 py-1.5 text-[13px] text-ink-soft tnum">n = {binding?.n} comparables</span>
           </div>
         </div>
@@ -119,7 +128,7 @@ export default function Home() {
         )}
       </div>
       <footer className="mx-auto max-w-[1120px] px-6 pb-10 text-[12.5px] text-ink-soft md:px-10">
-        compar.ar · versión inicial, uso interno. El motor de cálculo corre en tu navegador.
+        compar.ar · versión niña, uso interno. El motor de cálculo corre en tu navegador.
       </footer>
       {wordCtx && <WordModal open={wordOpen} onClose={() => setWordOpen(false)} ctx={wordCtx} />}
     </main>

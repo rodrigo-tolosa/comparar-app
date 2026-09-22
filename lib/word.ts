@@ -78,15 +78,23 @@ async function download(doc: any, filename: string) {
 }
 
 export const WORD_FILES: Record<string, string> = {
-  tested: "financiero_parte_analizada.docx",
-  fin: "estados_financieros_comparables.docx",
-  listado: "listado_aceptadas.docx",
-  desc: "descripcion_aceptadas.docx",
-  rech: "razones_rechazo.docx",
+  tested: "financiero_parte_analizada",
+  fin: "estados_financieros_comparables",
+  listado: "listado_aceptadas",
+  desc: "descripcion_aceptadas",
+  rech: "razones_rechazo",
 };
 
+// nombre de archivo seguro a partir del nombre de la tested party
+function safeName(s: string): string {
+  return s.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9 _-]/g, "").replace(/\s+/g, "_").slice(0, 60) || "tested";
+}
+
 export async function generateWord(kind: string, ctx: WordCtx) {
+  if (!ctx.testedName.trim()) throw new Error("Cargá el nombre de la parte analizada antes de descargar.");
   const { years, pli } = ctx;
+  const suf = safeName(ctx.testedName);
   const mr = mrEff(ctx.mrRows, ctx.rowsEff);
   if (kind === "all") {
     for (const k of ["tested", "fin", "listado", "desc", "rech"]) {
@@ -111,5 +119,5 @@ export async function generateWord(kind: string, ctx: WordCtx) {
     const stages = WordGen.construirEmbudo(ctx.analisisRows || [], mr) as [string, number][];
     doc = WordGen.rechazos(ctx.analisisRows || [], mr, renderEmbudoPNG(stages));
   } else return;
-  await download(doc, WORD_FILES[kind]);
+  await download(doc, `${WORD_FILES[kind]}_${suf}.docx`);
 }
