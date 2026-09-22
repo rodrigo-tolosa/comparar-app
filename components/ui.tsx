@@ -77,21 +77,28 @@ export function UploadZone({ onFile, onSample }: { onFile: (f: File) => void; on
   );
 }
 
-export function ExportBar({ minmax, setMinmax, onExcel, onPng }: {
+export function ExportBar({ minmax, setMinmax, onExcel, onPng, testedName, setTestedName, onWord }: {
   minmax: boolean; setMinmax: (v: boolean) => void; onExcel: () => void; onPng: () => void;
+  testedName: string; setTestedName: (v: string) => void; onWord?: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 shadow-card">
-      <button onClick={onExcel} className="rounded-lg bg-ink px-3.5 py-2 text-[13.5px] font-medium text-paper transition hover:opacity-90">
-        Descargar Excel
-      </button>
-      <button onClick={onPng} className="rounded-lg border border-line-strong px-3.5 py-2 text-[13.5px] font-medium text-ink transition hover:border-accent">
-        Descargar gráfico (PNG)
-      </button>
-      <label className="ml-auto flex cursor-pointer items-center gap-2 text-[12.5px] text-ink-soft">
-        <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={minmax} onChange={(e) => setMinmax(e.target.checked)} />
-        Incluir mínimo y máximo en el gráfico
-      </label>
+    <div className="rounded-xl border border-line bg-panel px-4 py-3 shadow-card">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-[12.5px] text-ink-soft">
+          Empresa analizada
+          <input value={testedName} onChange={(e) => setTestedName(e.target.value)} placeholder="Nombre de la parte analizada"
+            className="w-[220px] rounded-lg border border-line-strong bg-paper px-3 py-1.5 text-[13px] text-ink outline-none focus:border-accent" />
+        </label>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-ink-soft">
+            <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={minmax} onChange={(e) => setMinmax(e.target.checked)} />
+            Mín. y máx. en el gráfico
+          </label>
+          <button onClick={onExcel} className="rounded-lg border border-line-strong px-3.5 py-2 text-[13.5px] font-medium text-ink transition hover:border-accent">Excel</button>
+          <button onClick={onPng} className="rounded-lg border border-line-strong px-3.5 py-2 text-[13.5px] font-medium text-ink transition hover:border-accent">Gráfico (PNG)</button>
+          {onWord && <button onClick={onWord} className="rounded-lg bg-ink px-3.5 py-2 text-[13.5px] font-medium text-paper transition hover:opacity-90">Informes Word</button>}
+        </div>
+      </div>
     </div>
   );
 }

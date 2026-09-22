@@ -39,5 +39,5 @@ npm run build      # build + export estático a ./out
 - [x] **Fase 1 — cimientos**: stack, design system, motor de cálculo tipado + tests, y pantalla de rango (upload → cuartiles → gráfico → tabla de comparables).
 - [x] **Fase 2** — panel unificado de la empresa analizada + ajuste de patrimoniales (motor ya portado en `engine.ts`).
 - [x] **Fase 3** — anulación de años atípicos + gráfico de barras exportable (PNG) + Excel formateado.
-- [ ] **Fase 4** — generación de los cinco anexos Word (docx).
+- [x] **Fase 4** — generación de los cinco anexos Word (docx).
 - [ ] **Fase 5** — pulido de diseño, accesibilidad y deploy productivo.

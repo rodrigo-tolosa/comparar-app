@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { Header, UploadZone, RangeCards, ExportBar } from "@/components/ui";
 import { RangeChart, ComparablesTable } from "@/components/charts";
 import { RejectedPanel } from "@/components/rejected";
+import { WordModal } from "@/components/word";
+import type { WordCtx } from "@/lib/word";
 import { TestedPanel, seedAdj, emptyAdj, deriveTP, type AdjState } from "@/components/tested";
 import { parseWorkbook, loadSample, type Dataset } from "@/lib/parse";
 import { computeRange, computeAdjustedRange, testedIndicator } from "@/lib/engine";
@@ -16,6 +18,8 @@ export default function Home() {
   const [anul, setAnul] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<Set<string>>(new Set());
   const [minmax, setMinmax] = useState(true);
+  const [testedName, setTestedName] = useState("");
+  const [wordOpen, setWordOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   function open(d: Dataset) {
@@ -61,8 +65,12 @@ export default function Home() {
   }
   function doPng() {
     if (!binding) return;
-    exportChartPNG({ pli, range: binding, testedPli: tested.pli, minmax, showAdj, testedName: "Empresa analizada", n: binding.n, years });
+    exportChartPNG({ pli, range: binding, testedPli: tested.pli, minmax, showAdj, testedName: testedName || "Empresa analizada", n: binding.n, years });
   }
+  const wordCtx: WordCtx | null = ds ? {
+    pli, years, rowsEff, mrRows: ds.mrRows ?? null, analisisRows: ds.analisisRows ?? null,
+    tp, esServ: adj.esServ, adjOn: showAdj, testedPli: tested.pli, testedName,
+  } : null;
 
   if (!ds) {
     return (
@@ -98,7 +106,8 @@ export default function Home() {
           <>
             <RangeCards r={binding!} />
             <RangeChart r={binding!} tested={tested.pli} adjusted={showAdj} />
-            <ExportBar minmax={minmax} setMinmax={setMinmax} onExcel={doExcel} onPng={doPng} />
+            <ExportBar minmax={minmax} setMinmax={setMinmax} onExcel={doExcel} onPng={doPng}
+              testedName={testedName} setTestedName={setTestedName} onWord={() => setWordOpen(true)} />
             <TestedPanel pli={pli} years={years} range={range} adjRange={adjRange} tested={tested} adj={adj} setAdj={setAdj} hasFin={ds.hasFin} />
             <ComparablesTable years={years} comps={(showAdj ? adjRange! : range).comps} anul={anul} onToggle={toggleAnul} />
             <RejectedPanel rows={ds.rows} pli={pli} years={years} overrides={overrides} onToggle={toggleOverride} />
@@ -112,6 +121,7 @@ export default function Home() {
       <footer className="mx-auto max-w-[1120px] px-6 pb-10 text-[12.5px] text-ink-soft md:px-10">
         compar.ar · versión niña, uso interno. El motor de cálculo corre en tu navegador.
       </footer>
+      {wordCtx && <WordModal open={wordOpen} onClose={() => setWordOpen(false)} ctx={wordCtx} />}
     </main>
   );
 }
