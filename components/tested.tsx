@@ -31,7 +31,7 @@ export function seedAdj(
 export function deriveTP(raw: Record<string, string>, years: number[]) {
   const tp: Record<number, Partial<Fin>> = {};
   const tasas: Record<number, number> = {};
-  const F: (keyof Fin)[] = ["V", "C", "S", "AR", "AP", "INV"];
+  const F: (keyof Fin)[] = ["V", "C", "S", "AR", "AP", "INV", "TA", "INT"];
   for (const y of years) {
     tp[y] = {};
     for (const k of F) { const v = parseNum(raw[`${y}:${k}`]); if (!Number.isNaN(v)) tp[y][k] = v; }
@@ -40,10 +40,9 @@ export function deriveTP(raw: Record<string, string>, years: number[]) {
   return { tp, tasas };
 }
 
-const COLS: [keyof Fin | "i", string][] = [
-  ["V", "Ventas"], ["C", "Costo"], ["S", "Gastos op."],
-  ["AR", "Ctas. a cobrar"], ["AP", "Ctas. a pagar"], ["INV", "Inventarios"], ["i", "Tasa %"],
-];
+const BASE_COLS: [keyof Fin | "i", string][] = [["V", "Ventas"], ["C", "Costo"], ["S", "Gastos op."]];
+const ASSET_COLS: [keyof Fin | "i", string][] = [["TA", "Activos totales"], ["INT", "Intangibles"]];
+const PATRIM_COLS: [keyof Fin | "i", string][] = [["AR", "Ctas. a cobrar"], ["AP", "Ctas. a pagar"], ["INV", "Inventarios"], ["i", "Tasa %"]];
 const PATRIM = new Set(["AR", "AP", "INV", "i"]);
 
 export function TestedPanel({
@@ -59,6 +58,8 @@ export function TestedPanel({
   hasFin: boolean;
 }) {
   const showAdj = adj.on && !!adjRange && adjRange.n > 0;
+  const needsAssets = pli.includes("Activos");
+  const cols = [...BASE_COLS, ...(needsAssets ? ASSET_COLS : []), ...PATRIM_COLS];
   const binding = showAdj ? adjRange! : range;
   const tp = tested.pli;
   const hasTP = !Number.isNaN(tp);
@@ -116,7 +117,7 @@ export function TestedPanel({
             <thead>
               <tr className="text-ink-soft">
                 <th className="px-2 py-1.5 text-left font-medium">Año</th>
-                {COLS.map(([k, label]) => (
+                {cols.map(([k, label]) => (
                   <th key={k} className={`px-2 py-1.5 text-right font-medium ${!adj.on && PATRIM.has(k) ? "opacity-50" : ""}`}>{label}</th>
                 ))}
               </tr>
@@ -125,7 +126,7 @@ export function TestedPanel({
               {years.map((y) => (
                 <tr key={y}>
                   <td className="px-2 py-1.5 text-ink-soft tnum">{y}</td>
-                  {COLS.map(([k]) => {
+                  {cols.map(([k]) => {
                     const dis = !adj.on && PATRIM.has(k);
                     return (
                       <td key={k} className="px-2 py-1.5">
@@ -155,12 +156,12 @@ export function TestedPanel({
           </div>
         </details>
 
-        {(hasTP || showAdj) && (
+        {(range.n > 0) && (
           <div className="mt-5 border-t border-line pt-5">
             <div className="text-[14px]">
               Margen de la empresa analizada:{" "}
               <b className="tnum text-accent">{hasTP ? fmtPct(tp) : "—"}</b>{" "}
-              <span className="text-[12.5px] text-ink-soft">{tested.year ? `calculado del último año (${tested.year})` : "cargá los resultados del último año"}</span>
+              <span className="text-[12.5px] text-ink-soft">{hasTP ? `calculado del último año (${tested.year})` : (needsAssets ? "este indicador es sobre activos: cargá ventas, costo, gastos y activos del último año" : "cargá ventas, costo y gastos del último año para verlo")}</span>
             </div>
 
             {showAdj && (
