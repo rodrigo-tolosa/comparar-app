@@ -149,12 +149,12 @@ export function computeRange(
   const comps: { ric: string; empresa: string; byYear: number[]; avg: number }[] = [];
   for (const r of rows) {
     if (!r.accepted) continue;
+    const byYear = years.map((y) => r.vals[pli]?.[y] ?? NaN);
+    if (!byYear.some(isNum)) continue; // sin datos para este PLI: no se lista
     const per = years.filter((y) => !isAnul(anul, r.ric, y)).map((y) => r.vals[pli]?.[y]).filter(isNum);
-    if (!per.length) continue;
     comps.push({
-      ric: r.ric, empresa: r.empresa,
-      byYear: years.map((y) => r.vals[pli]?.[y] ?? NaN),
-      avg: per.reduce((a, b) => a + b, 0) / per.length,
+      ric: r.ric, empresa: r.empresa, byYear,
+      avg: per.length ? per.reduce((a, b) => a + b, 0) / per.length : NaN, // NaN si están todos los años anulados
     });
   }
   return { comps, ...rangeOf(comps.map((c) => c.avg)) };
@@ -170,13 +170,12 @@ export function computeAdjustedRange(
   for (const r of rows) {
     if (!r.accepted || !r.fin) continue;
     const { byYear } = adjustComparable(r.fin, years, pli, tp, rates, esServicios);
-    for (const y of years) if (isAnul(anul, r.ric, y)) byYear[y] = NaN;
-    const vals = years.map((y) => byYear[y]).filter(isNum);
-    if (!vals.length) continue;
+    const arr = years.map((y) => byYear[y] ?? NaN);
+    if (!arr.some(isNum)) continue; // sin datos ajustables: no se lista
+    const per = years.filter((y) => !isAnul(anul, r.ric, y)).map((y) => byYear[y]).filter(isNum);
     comps.push({
-      ric: r.ric, empresa: r.empresa,
-      byYear: years.map((y) => byYear[y] ?? NaN),
-      avg: vals.reduce((a, b) => a + b, 0) / vals.length,
+      ric: r.ric, empresa: r.empresa, byYear: arr,
+      avg: per.length ? per.reduce((a, b) => a + b, 0) / per.length : NaN,
     });
   }
   return { comps, ...rangeOf(comps.map((c) => c.avg)) };

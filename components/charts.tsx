@@ -30,7 +30,7 @@ export function RangeChart({ r, tested, adjusted }: { r: RangeStats; tested?: nu
                 stroke={inside ? "var(--accent)" : "var(--warn)"}
                 strokeDasharray="5 4"
                 strokeWidth={2}
-                label={{ value: `Empresa analizada ${fmtPct(tested!)}`, position: "insideTopRight", fill: inside ? "var(--accent)" : "var(--warn)", fontSize: 12, fontWeight: 600 }}
+                label={{ value: `Empresa analizada ${fmtPct(tested!)}`, position: "insideTopLeft", fill: inside ? "var(--accent)" : "var(--warn)", fontSize: 12, fontWeight: 600 }}
               />
             )}
             <Bar dataKey="v" radius={[4, 4, 0, 0]} maxBarSize={84}>
@@ -52,7 +52,10 @@ export function ComparablesTable({ years, comps, anul, onToggle }: {
 }) {
   const [sortAvg, setSortAvg] = useState(true);
   const yAsc = [...years].reverse();
-  const rows = [...comps].sort((a, b) => (sortAvg ? b.avg - a.avg : a.empresa.localeCompare(b.empresa)));
+  const rows = [...comps].sort((a, b) => {
+    if (sortAvg) { const av = Number.isNaN(a.avg) ? -Infinity : a.avg, bv = Number.isNaN(b.avg) ? -Infinity : b.avg; return bv - av; }
+    return a.empresa.localeCompare(b.empresa);
+  });
   return (
     <div className="rounded-2xl border border-line bg-panel shadow-card">
       <div className="flex items-center justify-between border-b border-line px-6 py-4">
@@ -79,6 +82,7 @@ export function ComparablesTable({ years, comps, anul, onToggle }: {
                     const off = anul.has(`${c.ric}\t${y}`);
                     return (
                       <td key={i}
+                        data-ric={c.ric} data-y={y}
                         onClick={() => onToggle(c.ric, y)}
                         title={`Tocá para ${off ? "reactivar" : "anular"} ${y}`}
                         className={`cursor-pointer px-4 py-2.5 text-right tnum hover:bg-accent-tint ${off ? "text-ink-soft line-through decoration-warn" : ""}`}>

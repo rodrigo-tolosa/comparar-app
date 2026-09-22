@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { Header, UploadZone, RangeCards, ExportBar } from "@/components/ui";
 import { RangeChart, ComparablesTable } from "@/components/charts";
+import { RejectedPanel } from "@/components/rejected";
 import { TestedPanel, seedAdj, emptyAdj, deriveTP, type AdjState } from "@/components/tested";
 import { parseWorkbook, loadSample, type Dataset } from "@/lib/parse";
 import { computeRange, computeAdjustedRange, testedIndicator } from "@/lib/engine";
@@ -13,6 +14,7 @@ export default function Home() {
   const [ny, setNy] = useState(3);
   const [adj, setAdj] = useState<AdjState>(emptyAdj());
   const [anul, setAnul] = useState<Set<string>>(new Set());
+  const [overrides, setOverrides] = useState<Set<string>>(new Set());
   const [minmax, setMinmax] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -20,7 +22,7 @@ export default function Home() {
     const first = Object.keys(d.plis)[0];
     if (!first) { setErr("No encontré columnas de PLI (formato «Margen …_AAAA») en la hoja PLI + Ratios."); return; }
     setErr(null); setDs(d); setPli(first); setNy(Math.min(3, d.plis[first].length));
-    setAdj(seedAdj(d.tpDefault, d.tasasDefault)); setAnul(new Set());
+    setAdj(seedAdj(d.tpDefault, d.tasasDefault)); setAnul(new Set()); setOverrides(new Set());
   }
   async function onFile(f: File) {
     try { open(parseWorkbook(await f.arrayBuffer())); }
@@ -31,14 +33,23 @@ export default function Home() {
     if (n.has(k)) n.delete(k); else n.add(k);
     setAnul(n);
   };
+  const toggleOverride = (ric: string) => {
+    const n = new Set(overrides);
+    if (n.has(ric)) n.delete(ric); else n.add(ric);
+    setOverrides(n);
+  };
 
   const years = useMemo(() => (ds && pli ? ds.plis[pli].slice(0, ny) : []), [ds, pli, ny]);
-  const range = useMemo(() => (ds && pli ? computeRange(ds.rows, pli, years, anul) : null), [ds, pli, years, anul]);
+  const rowsEff = useMemo(
+    () => (ds ? (overrides.size ? ds.rows.map((r) => (overrides.has(r.ric) ? { ...r, accepted: true } : r)) : ds.rows) : []),
+    [ds, overrides]
+  );
+  const range = useMemo(() => (ds && pli ? computeRange(rowsEff, pli, years, anul) : null), [ds, pli, rowsEff, years, anul]);
   const { tp, tasas } = useMemo(() => deriveTP(adj.raw, years), [adj.raw, years]);
   const tested = useMemo(() => (ds && pli ? testedIndicator(pli, tp, years) : { pli: NaN, year: null, base: {} }), [ds, pli, tp, years]);
   const adjRange = useMemo(
-    () => (ds && pli && adj.on && ds.hasFin ? computeAdjustedRange(ds.rows, pli, years, tp, tasas, adj.esServ, anul) : null),
-    [ds, pli, adj.on, adj.esServ, years, tp, tasas, anul]
+    () => (ds && pli && adj.on && ds.hasFin ? computeAdjustedRange(rowsEff, pli, years, tp, tasas, adj.esServ, anul) : null),
+    [ds, pli, adj.on, adj.esServ, rowsEff, years, tp, tasas, anul]
   );
   const showAdj = adj.on && !!adjRange && adjRange.n > 0;
   const binding = showAdj ? adjRange! : range;
@@ -90,6 +101,7 @@ export default function Home() {
             <ExportBar minmax={minmax} setMinmax={setMinmax} onExcel={doExcel} onPng={doPng} />
             <TestedPanel pli={pli} years={years} range={range} adjRange={adjRange} tested={tested} adj={adj} setAdj={setAdj} hasFin={ds.hasFin} />
             <ComparablesTable years={years} comps={(showAdj ? adjRange! : range).comps} anul={anul} onToggle={toggleAnul} />
+            <RejectedPanel rows={ds.rows} pli={pli} years={years} overrides={overrides} onToggle={toggleOverride} />
           </>
         ) : (
           <p className="rounded-lg border-l-2 border-warn bg-warn-tint px-4 py-3 text-[14px]">
