@@ -1,5 +1,5 @@
 "use client";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import type { RangeStats, Fin } from "./engine";
 import { baseImponible } from "./engine";
 
@@ -142,4 +142,117 @@ export function exportChartPNG(opts: {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }, "image/png");
+}
+
+/* ===================================================================
+   Cuadro "PLI Final" — réplica del que el Modo 2 del pipeline escribía
+   en la hoja «PLI Final» del pipeline_output. Devuelve el workbook
+   original (el Excel subido) con esa hoja agregada, como Blob .xlsx.
+   =================================================================== */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const COL = { titulo: "1F4E79", head: "2E75B6", zebra: "F2F2F2", est: "D6E4F0", tp: "E2EFDA" };
+
+export function buildPipelineOutputBlob(opts: {
+  pli: string; years: number[];
+  range: FullRange; adjRange: FullRange | null;
+  testedName: string; testedPli: number;
+  srcBuf: ArrayBuffer | null;
+}): Blob {
+  const { pli, years, range, adjRange, testedName, testedPli, srcBuf } = opts;
+  const yearsAsc = [...years].reverse();
+  const nY = yearsAsc.length;
+  const lastCol = 2 + nY; // 0:N° · 1:Compañía · 2..(1+nY):años · (2+nY):Promedio
+
+  const BORD = { style: "thin", color: { rgb: "D0D0D0" } };
+  const border = { top: BORD, bottom: BORD, left: BORD, right: BORD };
+  const sty = (rgb: string, o: { bold?: boolean; left?: boolean; white?: boolean; sz?: number } = {}): any => ({
+    fill: { patternType: "solid", fgColor: { rgb } },
+    font: { name: "Calibri", sz: o.sz ?? 10, bold: !!o.bold, color: { rgb: o.white ? "FFFFFF" : "000000" } },
+    alignment: { horizontal: o.left ? "left" : "center", vertical: "center", wrapText: true },
+    border,
+  });
+
+  const ws: any = {};
+  let maxR = 0;
+  const put = (r: number, c: number, v: any, z: string | undefined, s: any) => {
+    const ref = XLSX.utils.encode_cell({ r, c });
+    const isNum = typeof v === "number" && !Number.isNaN(v);
+    ws[ref] = { v: v == null || (typeof v === "number" && Number.isNaN(v)) ? "" : v, t: isNum ? "n" : "s", ...(z ? { z } : {}), s };
+    if (r > maxR) maxR = r;
+  };
+  const merges: any[] = [];
+  let row = 0;
+
+  const writeCuadro = (titulo: string, R: FullRange) => {
+    const comps = [...R.comps].filter((c) => !Number.isNaN(c.avg)).sort((a, b) => a.avg - b.avg);
+    // título (fila merge)
+    const sT = sty(COL.titulo, { bold: true, white: true, left: true, sz: 11 });
+    for (let c = 0; c <= lastCol; c++) put(row, c, c === 0 ? titulo : "", undefined, sT);
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: lastCol } });
+    row++;
+    // encabezado
+    const sH = sty(COL.head, { bold: true, white: true });
+    put(row, 0, "N° Obs", undefined, sH);
+    put(row, 1, "Compañía", undefined, { ...sH, alignment: { ...sH.alignment, horizontal: "left" } });
+    yearsAsc.forEach((y, i) => put(row, 2 + i, String(y), undefined, sH));
+    put(row, lastCol, `Promedio Simple (${nY} años)`, undefined, sH);
+    row++;
+    // empresas (ascendente por promedio)
+    comps.forEach((c, idx) => {
+      const obs = idx + 1;
+      const bg = obs % 2 === 0 ? COL.zebra : "FFFFFF";
+      put(row, 0, obs, undefined, sty(bg));
+      put(row, 1, c.empresa, undefined, sty(bg, { left: true }));
+      const valsAsc = [...c.byYear].reverse();
+      yearsAsc.forEach((_, i) => put(row, 2 + i, valsAsc[i], "0.00%", sty(bg)));
+      put(row, lastCol, c.avg, "0.00%", sty(bg, { bold: true }));
+      row++;
+    });
+    row++; // separador
+    // estadísticos con posición de cuartil (fórmula del pipeline)
+    const n = R.n;
+    const posMed = (n + 1) / 2, posQ1 = (posMed + 1) / 2, posQ3 = posMed - 1 + posQ1;
+    const est: [string, number, number | null][] = [
+      ["Máximo", R.max, null],
+      ["Tercer Cuartil", R.q3, posQ3],
+      ["Mediana", R.med, posMed],
+      ["Primer Cuartil", R.q1, posQ1],
+      ["Mínimo", R.min, null],
+      ["Observaciones", n, null],
+    ];
+    est.forEach(([label, val, pos]) => {
+      if (pos != null) put(row, 0, pos, pos === Math.round(pos) ? "0" : "0.0", sty(COL.est));
+      else put(row, 0, "", undefined, sty(COL.est));
+      put(row, 1, label, undefined, sty(COL.est, { left: true }));
+      for (let c = 2; c < lastCol; c++) put(row, c, "", undefined, sty(COL.est));
+      const esObs = label === "Observaciones";
+      put(row, lastCol, val, esObs ? undefined : "0.00%", sty(COL.est, { bold: !esObs }));
+      row++;
+    });
+    row++; // separador
+    // parte analizada
+    put(row, 0, "", undefined, sty(COL.tp));
+    put(row, 1, testedName || "Parte analizada", undefined, sty(COL.tp, { bold: true, left: true }));
+    for (let c = 2; c < lastCol; c++) put(row, c, "", undefined, sty(COL.tp));
+    put(row, lastCol, testedPli, "0.00%", sty(COL.tp, { bold: true }));
+    row++;
+  };
+
+  writeCuadro(pli, range);
+  if (adjRange && adjRange.n > 0) { row += 2; writeCuadro(`${pli} (Ajustado)`, adjRange); }
+
+  ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: lastCol } });
+  ws["!merges"] = merges;
+  ws["!cols"] = [{ wch: 8 }, { wch: 38 }, ...yearsAsc.map(() => ({ wch: 11 })), { wch: 20 }];
+
+  let wb: any;
+  if (srcBuf) {
+    wb = XLSX.read(srcBuf, { cellStyles: true });
+    if (wb.Sheets["PLI Final"]) { delete wb.Sheets["PLI Final"]; wb.SheetNames = wb.SheetNames.filter((nm: string) => nm !== "PLI Final"); }
+  } else {
+    wb = XLSX.utils.book_new();
+  }
+  XLSX.utils.book_append_sheet(wb, ws, "PLI Final");
+  const ab = XLSX.write(wb, { type: "array", bookType: "xlsx", cellStyles: true }) as ArrayBuffer;
+  return new Blob([ab], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }

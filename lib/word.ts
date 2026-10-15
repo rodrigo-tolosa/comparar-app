@@ -86,38 +86,50 @@ export const WORD_FILES: Record<string, string> = {
 };
 
 // nombre de archivo seguro a partir del nombre de la tested party
-function safeName(s: string): string {
+export function safeName(s: string): string {
   return s.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9 _-]/g, "").replace(/\s+/g, "_").slice(0, 60) || "tested";
 }
 
-export async function generateWord(kind: string, ctx: WordCtx) {
-  if (!ctx.testedName.trim()) throw new Error("Cargá el nombre de la parte analizada antes de descargar.");
+const KINDS = ["tested", "fin", "listado", "desc", "rech"] as const;
+
+// Construye el documento docx de un anexo (sin descargarlo).
+function buildDoc(kind: string, ctx: WordCtx): any {
   const { years, pli } = ctx;
-  const suf = safeName(ctx.testedName);
   const mr = mrEff(ctx.mrRows, ctx.rowsEff);
-  if (kind === "all") {
-    for (const k of ["tested", "fin", "listado", "desc", "rech"]) {
-      await generateWord(k, ctx);
-      await new Promise((r) => setTimeout(r, 350));
-    }
-    return;
-  }
-  let doc: any;
   if (kind === "tested") {
-    doc = WordGen.testedParty(ctx.tp, {
+    return WordGen.testedParty(ctx.tp, {
       nombre: ctx.testedName || "Parte analizada", pliNombre: pli, pliValor: ctx.testedPli,
       esServicios: ctx.esServ, hacerAjuste: ctx.adjOn, years,
     });
   } else if (kind === "fin") {
-    doc = WordGen.estadosFinancieros(dataByRic(ctx.rowsEff, years), pliByRic(ctx.rowsEff, pli), accRics(ctx.rowsEff), years, { pliNombre: pli });
+    return WordGen.estadosFinancieros(dataByRic(ctx.rowsEff, years), pliByRic(ctx.rowsEff, pli), accRics(ctx.rowsEff), years, { pliNombre: pli });
   } else if (kind === "listado") {
-    doc = WordGen.listado(mr);
+    return WordGen.listado(mr);
   } else if (kind === "desc") {
-    doc = WordGen.descripcion(mr);
+    return WordGen.descripcion(mr);
   } else if (kind === "rech") {
     const stages = WordGen.construirEmbudo(ctx.analisisRows || [], mr) as [string, number][];
-    doc = WordGen.rechazos(ctx.analisisRows || [], mr, renderEmbudoPNG(stages));
-  } else return;
-  await download(doc, `${WORD_FILES[kind]}_${suf}.docx`);
+    return WordGen.rechazos(ctx.analisisRows || [], mr, renderEmbudoPNG(stages));
+  }
+  throw new Error("Tipo de informe desconocido: " + kind);
+}
+
+export async function generateWord(kind: string, ctx: WordCtx) {
+  if (!ctx.testedName.trim()) throw new Error("Cargá el nombre de la parte analizada antes de descargar.");
+  const suf = safeName(ctx.testedName);
+  if (kind === "all") {
+    for (const k of KINDS) { await generateWord(k, ctx); await new Promise((r) => setTimeout(r, 350)); }
+    return;
+  }
+  await download(buildDoc(kind, ctx), `${WORD_FILES[kind]}_${suf}.docx`);
+}
+
+// Arma los cinco anexos Word como blobs, para empaquetarlos en un .zip.
+export async function buildWordBlobs(ctx: WordCtx): Promise<{ name: string; blob: Blob }[]> {
+  if (!ctx.testedName.trim()) throw new Error("Cargá el nombre de la parte analizada antes de descargar.");
+  const suf = safeName(ctx.testedName);
+  const out: { name: string; blob: Blob }[] = [];
+  for (const k of KINDS) out.push({ name: `${WORD_FILES[k]}_${suf}.docx`, blob: await WordGen.toBlob(buildDoc(k, ctx)) });
+  return out;
 }

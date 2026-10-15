@@ -11,6 +11,7 @@ export interface Dataset {
   tasasDefault?: Record<string, number> | null;
   mrRows?: Record<string, unknown>[] | null;
   analisisRows?: Record<string, unknown>[] | null;
+  srcBuf?: ArrayBuffer | null; // Excel original subido, para re-exportarlo con la hoja "PLI Final"
 }
 
 const FIN_FIELDS: Record<keyof Fin, string> = {
@@ -80,7 +81,7 @@ export function parseWorkbook(buf: ArrayBuffer): Dataset {
     };
   });
 
-  return { plis, rows, hasFin: !!dataRows, mrRows, analisisRows: sheet("Analisis") };
+  return { plis, rows, hasFin: !!dataRows, mrRows, analisisRows: sheet("Analisis"), srcBuf: buf };
 }
 
 /** Muestra embebida para "probar con datos de ejemplo". */
@@ -107,5 +108,6 @@ export function loadSample(): Dataset {
     tasasDefault: s.tasasDefault ?? null,
     mrRows: (sampleRaw as { mr?: Record<string, unknown>[] }).mr ?? null,
     analisisRows: (sampleRaw as { analisis?: Record<string, unknown>[] }).analisis ?? null,
+    srcBuf: null,
   };
 }

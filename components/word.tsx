@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { generateWord, type WordCtx } from "@/lib/word";
+import { generateWord, buildWordBlobs, safeName, type WordCtx } from "@/lib/word";
+import { downloadZip } from "@/lib/zip";
 
 const ITEMS: [string, string][] = [
   ["tested", "Financiero de la parte analizada"],
@@ -10,18 +11,40 @@ const ITEMS: [string, string][] = [
   ["rech", "Razones de rechazo (con embudo)"],
 ];
 
-export function WordModal({ open, onClose, ctx }: { open: boolean; onClose: () => void; ctx: WordCtx }) {
+export function WordModal({
+  open, onClose, ctx, buildPipeline,
+}: {
+  open: boolean; onClose: () => void; ctx: WordCtx;
+  buildPipeline?: () => Blob | null;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<{ ok: boolean; txt: string } | null>(null);
   if (!open) return null;
 
   const noName = !ctx.testedName.trim();
+
+  // descarga individual de un anexo (sin zip)
   const run = async (kind: string) => {
     if (noName) return;
     setBusy(kind); setNote(null);
     try {
       await generateWord(kind, ctx);
-      setNote({ ok: true, txt: kind === "all" ? "Listo: se descargaron los cinco informes." : "Informe generado." });
+      setNote({ ok: true, txt: "Informe generado." });
+    } catch (e) {
+      setNote({ ok: false, txt: "No se pudo generar: " + (e instanceof Error ? e.message : String(e)) });
+    } finally { setBusy(null); }
+  };
+
+  // informe completo: 5 Word + pipeline_output.xlsx, todo en un .zip
+  const runZip = async () => {
+    if (noName) return;
+    setBusy("all"); setNote(null);
+    try {
+      const files = await buildWordBlobs(ctx);
+      const pipe = buildPipeline?.();
+      if (pipe) files.push({ name: "pipeline_output.xlsx", blob: pipe });
+      await downloadZip(files, `informe_${safeName(ctx.testedName)}.zip`);
+      setNote({ ok: true, txt: pipe ? "Listo: .zip con los 5 informes + el pipeline_output." : "Listo: .zip con los 5 informes." });
     } catch (e) {
       setNote({ ok: false, txt: "No se pudo generar: " + (e instanceof Error ? e.message : String(e)) });
     } finally { setBusy(null); }
@@ -52,9 +75,10 @@ export function WordModal({ open, onClose, ctx }: { open: boolean; onClose: () =
               {busy === k && <span className="text-[12px] text-ink-soft">generando…</span>}
             </button>
           ))}
-          <button disabled={!!busy || noName} onClick={() => run("all")}
-            className="mt-1 rounded-lg bg-ink px-4 py-2.5 text-[14px] font-medium text-paper transition hover:opacity-90 disabled:opacity-40">
-            Descargar los cinco
+          <button disabled={!!busy || noName} onClick={runZip}
+            className="mt-1 flex items-center justify-between rounded-lg bg-ink px-4 py-2.5 text-[14px] font-medium text-paper transition hover:opacity-90 disabled:opacity-40">
+            <span>Descargar todo en .zip (5 Word + pipeline_output)</span>
+            {busy === "all" && <span className="text-[12px] opacity-80">armando…</span>}
           </button>
         </div>
         {note && (

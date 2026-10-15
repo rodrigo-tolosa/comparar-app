@@ -8,7 +8,7 @@ import type { WordCtx } from "@/lib/word";
 import { TestedPanel, seedAdj, emptyAdj, deriveTP, type AdjState } from "@/components/tested";
 import { parseWorkbook, loadSample, type Dataset } from "@/lib/parse";
 import { computeRange, computeAdjustedRange, testedIndicator } from "@/lib/engine";
-import { exportExcel, exportChartPNG } from "@/lib/export";
+import { exportExcel, exportChartPNG, buildPipelineOutputBlob } from "@/lib/export";
 
 export default function Home() {
   const [ds, setDs] = useState<Dataset | null>(null);
@@ -66,6 +66,14 @@ export default function Home() {
   function doPng() {
     if (!binding) return;
     exportChartPNG({ pli, range: binding, testedPli: tested.pli, minmax, showAdj, testedName: testedName || "Empresa analizada", n: binding.n, years });
+  }
+  // pipeline_output.xlsx con la hoja «PLI Final» (se agrega al .zip de informes)
+  function buildPipeline(): Blob | null {
+    if (!range) return null;
+    return buildPipelineOutputBlob({
+      pli, years, range, adjRange: showAdj ? adjRange : null,
+      testedName, testedPli: tested.pli, srcBuf: ds?.srcBuf ?? null,
+    });
   }
   const wordCtx: WordCtx | null = ds ? {
     pli, years, rowsEff, mrRows: ds.mrRows ?? null, analisisRows: ds.analisisRows ?? null,
@@ -130,7 +138,7 @@ export default function Home() {
       <footer className="mx-auto max-w-[1120px] px-6 pb-10 text-[12.5px] text-ink-soft md:px-10">
         compar.ar · versión niña, uso interno. El motor de cálculo corre en tu navegador.
       </footer>
-      {wordCtx && <WordModal open={wordOpen} onClose={() => setWordOpen(false)} ctx={wordCtx} />}
+      {wordCtx && <WordModal open={wordOpen} onClose={() => setWordOpen(false)} ctx={wordCtx} buildPipeline={buildPipeline} />}
     </main>
   );
 }
