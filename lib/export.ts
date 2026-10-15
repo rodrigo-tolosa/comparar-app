@@ -82,7 +82,7 @@ export function exportChartPNG(opts: {
   pli: string; range: RangeStats; testedPli: number;
   minmax: boolean; showAdj: boolean; testedName: string; n: number; years: number[];
 }) {
-  const { range: R, testedPli: tp, minmax, showAdj } = opts;
+  const { range: R, testedPli: tp, minmax } = opts;
   type Bar = { label: string; val: number; t: boolean };
   const bars: Bar[] = [];
   if (minmax) bars.push({ label: "Mínimo", val: R.min, t: false });
@@ -102,7 +102,7 @@ export function exportChartPNG(opts: {
   const pctAx = (v: number) => (v * 100).toFixed(1).replace(".", ",") + "%";
 
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = ink; ctx.font = "bold 20px Inter,Arial,sans-serif"; ctx.fillText(`Rango Intercuartil Comparable y Margen de Utilidad de ${opts.testedName || "Empresa analizada"}`, 60, 44);
+  ctx.fillStyle = ink; ctx.font = "bold 24px Inter,Arial,sans-serif"; ctx.fillText(`Rango Intercuartil Comparable y Margen de Utilidad de ${opts.testedName || "Empresa analizada"}`, 60, 44);
   ctx.fillStyle = soft; ctx.font = "14px Inter,Arial,sans-serif";
   ctx.fillText(`${opts.n} comparables · ${[...opts.years].reverse().join(" · ")}`, 60, 68);
 
@@ -132,7 +132,6 @@ export function exportChartPNG(opts: {
     if (w.length > 1 && b.label.length > 11) { ctx.fillText(w.slice(0, -1).join(" "), cx, plotBottom + 16); ctx.fillText(w.slice(-1)[0], cx, plotBottom + 34); }
     else ctx.fillText(b.label, cx, plotBottom + 16);
   });
-  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = soft; ctx.font = "12px Inter,Arial,sans-serif";
 
   cv.toBlob((b) => {
     if (!b) return;
