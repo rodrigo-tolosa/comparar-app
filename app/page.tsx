@@ -19,6 +19,7 @@ export default function Home() {
   const [overrides, setOverrides] = useState<Set<string>>(new Set());
   const [minmax, setMinmax] = useState(true);
   const [testedName, setTestedName] = useState("");
+  const [extraMargins, setExtraMargins] = useState<{ label: string; pct: string }[]>([]);
   const [wordOpen, setWordOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -70,9 +71,16 @@ export default function Home() {
   // pipeline_output.xlsx con la hoja «PLI Final» (se agrega al .zip de informes)
   function buildPipeline(): Blob | null {
     if (!range) return null;
+    const parsePct = (s: string) => Number(String(s).replace(/\s|%/g, "").replace(",", ".")) / 100;
+    const base = { label: testedName || "Parte analizada", val: tested.pli };
+    const extras = extraMargins
+      .filter((m) => m.label.trim() && m.pct.trim() && !Number.isNaN(parsePct(m.pct)))
+      .map((m) => ({ label: m.label.trim(), val: parsePct(m.pct) }));
     return buildPipelineOutputBlob({
       pli, years, range, adjRange: showAdj ? adjRange : null,
-      testedName, testedPli: tested.pli, srcBuf: ds?.srcBuf ?? null,
+      testedName, testedPli: tested.pli, testedYear: tested.year,
+      margins: [base, ...extras],
+      srcBuf: ds?.srcBuf ?? null,
     });
   }
   const wordCtx: WordCtx | null = ds ? {
@@ -138,7 +146,8 @@ export default function Home() {
       <footer className="mx-auto max-w-[1120px] px-6 pb-10 text-[12.5px] text-ink-soft md:px-10">
         compar.ar · versión niña, uso interno. El motor de cálculo corre en tu navegador.
       </footer>
-      {wordCtx && <WordModal open={wordOpen} onClose={() => setWordOpen(false)} ctx={wordCtx} buildPipeline={buildPipeline} />}
+      {wordCtx && <WordModal open={wordOpen} onClose={() => setWordOpen(false)} ctx={wordCtx} buildPipeline={buildPipeline}
+        extraMargins={extraMargins} setExtraMargins={setExtraMargins} />}
     </main>
   );
 }

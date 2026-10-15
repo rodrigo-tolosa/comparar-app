@@ -153,10 +153,11 @@ const COL = { titulo: "1F4E79", head: "2E75B6", zebra: "F2F2F2", est: "D6E4F0", 
 export function buildPipelineOutputBlob(opts: {
   pli: string; years: number[];
   range: FullRange; adjRange: FullRange | null;
-  testedName: string; testedPli: number;
+  testedName: string; testedPli: number; testedYear: number | null;
+  margins: { label: string; val: number }[];
   srcBuf: ArrayBuffer | null;
 }): Blob {
-  const { pli, years, range, adjRange, testedName, testedPli, srcBuf } = opts;
+  const { pli, years, range, adjRange, testedName, testedPli, testedYear, margins, srcBuf } = opts;
   const yearsAsc = [...years].reverse();
   const nY = yearsAsc.length;
   const lastCol = 2 + nY; // 0:N° · 1:Compañía · 2..(1+nY):años · (2+nY):Promedio
@@ -219,21 +220,31 @@ export function buildPipelineOutputBlob(opts: {
       ["Observaciones", n, null],
     ];
     est.forEach(([label, val, pos]) => {
-      if (pos != null) put(row, 0, pos, pos === Math.round(pos) ? "0" : "0.0", sty(COL.est));
-      else put(row, 0, "", undefined, sty(COL.est));
-      put(row, 1, label, undefined, sty(COL.est, { left: true }));
-      for (let c = 2; c < lastCol; c++) put(row, c, "", undefined, sty(COL.est));
+      // estadísticos en blanco (las celdas vacías ya no quedan pintadas)
+      if (pos != null) put(row, 0, pos, pos === Math.round(pos) ? "0" : "0.0", sty("FFFFFF"));
+      else put(row, 0, "", undefined, sty("FFFFFF"));
+      put(row, 1, label, undefined, sty("FFFFFF", { left: true }));
+      for (let c = 2; c < lastCol; c++) put(row, c, "", undefined, sty("FFFFFF"));
       const esObs = label === "Observaciones";
-      put(row, lastCol, val, esObs ? undefined : "0.00%", sty(COL.est, { bold: !esObs }));
+      put(row, lastCol, val, esObs ? undefined : "0.00%", sty("FFFFFF", { bold: !esObs }));
       row++;
     });
     row++; // separador
-    // parte analizada
-    put(row, 0, "", undefined, sty(COL.tp));
-    put(row, 1, testedName || "Parte analizada", undefined, sty(COL.tp, { bold: true, left: true }));
-    for (let c = 2; c < lastCol; c++) put(row, c, "", undefined, sty(COL.tp));
-    put(row, lastCol, testedPli, "0.00%", sty(COL.tp, { bold: true }));
+    // encabezado de la sección: "Compañía Analizada" + año de la tested (uno solo)
+    const sHdr = sty(COL.est, { bold: true });
+    for (let c = 0; c <= lastCol; c++) put(row, c, "", undefined, sHdr);
+    put(row, 1, "Compañía Analizada", undefined, { ...sHdr, alignment: { ...sHdr.alignment, horizontal: "left" } });
+    if (testedYear != null) put(row, lastCol, testedYear, "0", sHdr);
     row++;
+    // una fila por cada margen de la parte analizada (blancas)
+    const filas = margins && margins.length ? margins : [{ label: testedName || "Parte analizada", val: testedPli }];
+    filas.forEach((m) => {
+      put(row, 0, "", undefined, sty("FFFFFF"));
+      put(row, 1, m.label, undefined, sty("FFFFFF", { bold: true, left: true }));
+      for (let c = 2; c < lastCol; c++) put(row, c, "", undefined, sty("FFFFFF"));
+      put(row, lastCol, m.val, "0.00%", sty("FFFFFF", { bold: true }));
+      row++;
+    });
   };
 
   writeCuadro(pli, range);
