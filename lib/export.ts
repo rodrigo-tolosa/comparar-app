@@ -102,9 +102,9 @@ export function exportChartPNG(opts: {
   const pctAx = (v: number) => (v * 100).toFixed(1).replace(".", ",") + "%";
 
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = ink; ctx.font = "bold 24px Inter,Arial,sans-serif"; ctx.fillText(opts.pli, 60, 44);
+  ctx.fillStyle = ink; ctx.font = "bold 20px Inter,Arial,sans-serif"; ctx.fillText(`Rango Intercuartil Comparable y Margen de Utilidad de ${opts.testedName || "Empresa analizada"}`, 60, 44);
   ctx.fillStyle = soft; ctx.font = "14px Inter,Arial,sans-serif";
-  ctx.fillText(`${opts.n} comparables · ${[...opts.years].reverse().join(" · ")} · ${showAdj ? "rango ajustado" : "sin ajustar"}`, 60, 68);
+  ctx.fillText(`${opts.n} comparables · ${[...opts.years].reverse().join(" · ")}`, 60, 68);
 
   const padL = 76, padR = W - 40, plotTop = 95, plotBottom = 500, plotH = plotBottom - plotTop, plotW = padR - padL;
   const vals = bars.map((b) => b.val);
@@ -133,7 +133,6 @@ export function exportChartPNG(opts: {
     else ctx.fillText(b.label, cx, plotBottom + 16);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = soft; ctx.font = "12px Inter,Arial,sans-serif";
-  ctx.fillText("compar.ar · rango de tus comparables", 60, H - 20);
 
   cv.toBlob((b) => {
     if (!b) return;
