@@ -77,11 +77,13 @@ export function exportExcel(opts: {
   XLSX.writeFile(wb, "rango_comparar.xlsx");
 }
 
-/** Gráfico de barras vertical (azul cuartiles/mín/máx, verde tested) -> PNG descargable. */
-export function exportChartPNG(opts: {
+type ChartOpts = {
   pli: string; range: RangeStats; testedPli: number;
   minmax: boolean; showAdj: boolean; testedName: string; n: number; years: number[];
-}) {
+};
+
+/** Dibuja el gráfico de barras en un canvas y lo devuelve (sin descargar). */
+function drawChartCanvas(opts: ChartOpts): HTMLCanvasElement {
   const { range: R, testedPli: tp, minmax } = opts;
   type Bar = { label: string; val: number; t: boolean };
   const bars: Bar[] = [];
@@ -132,14 +134,23 @@ export function exportChartPNG(opts: {
     if (w.length > 1 && b.label.length > 11) { ctx.fillText(w.slice(0, -1).join(" "), cx, plotBottom + 16); ctx.fillText(w.slice(-1)[0], cx, plotBottom + 34); }
     else ctx.fillText(b.label, cx, plotBottom + 16);
   });
+  return cv;
+}
 
-  cv.toBlob((b) => {
+/** Gráfico de barras -> PNG, descarga directa. */
+export function exportChartPNG(opts: ChartOpts) {
+  drawChartCanvas(opts).toBlob((b) => {
     if (!b) return;
     const url = URL.createObjectURL(b);
     const a = document.createElement("a"); a.href = url; a.download = "grafico_rango.png";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }, "image/png");
+}
+
+/** Gráfico de barras -> PNG como Blob (para empaquetar en el .zip). */
+export function buildChartBlob(opts: ChartOpts): Promise<Blob | null> {
+  return new Promise((res) => drawChartCanvas(opts).toBlob((b) => res(b), "image/png"));
 }
 
 /* ===================================================================
@@ -155,9 +166,8 @@ export function buildPipelineOutputBlob(opts: {
   range: FullRange; adjRange: FullRange | null;
   testedName: string; testedPli: number; testedYear: number | null;
   margins: { label: string; val: number }[];
-  srcBuf: ArrayBuffer | null;
 }): Blob {
-  const { pli, years, range, adjRange, testedName, testedPli, testedYear, margins, srcBuf } = opts;
+  const { pli, years, range, adjRange, testedName, testedPli, testedYear, margins } = opts;
   const yearsAsc = [...years].reverse();
   const nY = yearsAsc.length;
   const lastCol = 2 + nY; // 0:N° · 1:Compañía · 2..(1+nY):años · (2+nY):Promedio
@@ -254,14 +264,9 @@ export function buildPipelineOutputBlob(opts: {
   ws["!merges"] = merges;
   ws["!cols"] = [{ wch: 8 }, { wch: 38 }, ...yearsAsc.map(() => ({ wch: 11 })), { wch: 20 }];
 
-  let wb: any;
-  if (srcBuf) {
-    wb = XLSX.read(srcBuf, { cellStyles: true });
-    if (wb.Sheets["PLI Final"]) { delete wb.Sheets["PLI Final"]; wb.SheetNames = wb.SheetNames.filter((nm: string) => nm !== "PLI Final"); }
-  } else {
-    wb = XLSX.utils.book_new();
-  }
-  XLSX.utils.book_append_sheet(wb, ws, "PLI Final");
+  // Excel suelto: solo la hoja con el cuadro PLI (no se toca el pipeline_output original)
+  const wb: any = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Cuadro PLI");
   const ab = XLSX.write(wb, { type: "array", bookType: "xlsx", cellStyles: true }) as ArrayBuffer;
   return new Blob([ab], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }

@@ -12,10 +12,11 @@ const ITEMS: [string, string][] = [
 ];
 
 export function WordModal({
-  open, onClose, ctx, buildPipeline, extraMargins, setExtraMargins,
+  open, onClose, ctx, buildPipeline, buildChart, extraMargins, setExtraMargins,
 }: {
   open: boolean; onClose: () => void; ctx: WordCtx;
   buildPipeline?: () => Blob | null;
+  buildChart?: () => Promise<Blob | null>;
   extraMargins: { label: string; pct: string }[];
   setExtraMargins: (v: { label: string; pct: string }[]) => void;
 }) {
@@ -55,7 +56,7 @@ export function WordModal({
     try {
       const pipe = buildPipeline?.();
       if (!pipe) { setNote({ ok: false, txt: "No hay datos para el cuadro PLI." }); return; }
-      dl(pipe, `pipeline_output_${safeName(ctx.testedName || "tested")}.xlsx`);
+      dl(pipe, `cuadro_pli_${safeName(ctx.testedName || "tested")}.xlsx`);
       setNote({ ok: true, txt: "Excel del cuadro PLI descargado." });
     } catch (e) {
       setNote({ ok: false, txt: "No se pudo generar: " + (e instanceof Error ? e.message : String(e)) });
@@ -69,9 +70,11 @@ export function WordModal({
     try {
       const files = await buildWordBlobs(ctx);
       const pipe = buildPipeline?.();
-      if (pipe) files.push({ name: "pipeline_output.xlsx", blob: pipe });
-      await downloadZip(files, `informe_${safeName(ctx.testedName)}.zip`);
-      setNote({ ok: true, txt: pipe ? "Listo: .zip con los 5 informes + el pipeline_output." : "Listo: .zip con los 5 informes." });
+      if (pipe) files.push({ name: "cuadro_pli.xlsx", blob: pipe });
+      const png = buildChart ? await buildChart() : null;
+      if (png) files.push({ name: "grafico_rango.png", blob: png });
+      await downloadZip(files, `archivos_${safeName(ctx.testedName)}.zip`);
+      setNote({ ok: true, txt: "Listo: .zip con los 5 Word + cuadro PLI + gráfico." });
     } catch (e) {
       setNote({ ok: false, txt: "No se pudo generar: " + (e instanceof Error ? e.message : String(e)) });
     } finally { setBusy(null); }
@@ -133,7 +136,7 @@ export function WordModal({
           </button>
           <button disabled={!!busy || noName} onClick={runZip}
             className="mt-1 flex items-center justify-between rounded-lg bg-ink px-4 py-2.5 text-[14px] font-medium text-paper transition hover:opacity-90 disabled:opacity-40">
-            <span>Descargar todo en .zip (5 Word + pipeline_output)</span>
+            <span>Descargar todo en .zip (5 Word + cuadro PLI + gráfico)</span>
             {busy === "all" && <span className="text-[12px] opacity-80">armando…</span>}
           </button>
         </div>
