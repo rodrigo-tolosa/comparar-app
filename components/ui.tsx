@@ -28,9 +28,8 @@ export function Header({ onReset }: { onReset?: () => void }) {
 export function UploadZone({ onFile, onSample }: { onFile: (f: File) => void; onSample: () => void }) {
   return (
     <div className="mx-auto max-w-[1120px] px-6 py-12 md:px-10">
-      <h1 className="display max-w-[18ch] text-[clamp(34px,5vw,52px)] font-semibold leading-[1.05] tracking-[-0.02em]">
-        Motor de búsqueda interno
-        <span className="text-ink-soft"> · versión 2</span>
+      <h1 className="display text-[clamp(34px,5vw,52px)] font-semibold leading-[1.05] tracking-[-0.02em]">
+        Archivos para informe y anexos
       </h1>
       <p className="mt-5 max-w-[56ch] text-[16px] leading-relaxed text-ink-soft">
         Si ya aceptaste y rechazaste a las empresas de la hoja MR, subí ese Excel para calcular
